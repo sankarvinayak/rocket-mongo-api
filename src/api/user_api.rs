@@ -103,7 +103,7 @@ pub fn login(
     };
     let user_detail = db.login(data);
     match user_detail {
-        Ok(user) => Ok(Json(ToF{tof:true})),
+        Ok(user) => Ok(Json(ToF{id:user.id})),
         Err(_) => Err(Status::InternalServerError),
     }
 }

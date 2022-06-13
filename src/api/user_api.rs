@@ -1,9 +1,9 @@
-use crate::{models::user_model::{User,ToF}, repository::mongodb_repo::MongoRepo};
+use crate::{models::user_model::{User,ToF, uname, HomeUser}, repository::mongodb_repo::{UserEntry, HomeUserDetails}};
 use mongodb::{bson::oid::ObjectId, results::InsertOneResult}; 
 use rocket::{http::Status, serde::json::Json, State};
 #[post("/user", data = "<new_user>")]
 pub fn create_user(
-    db: &State<MongoRepo>,
+    db: &State<UserEntry>,
     new_user: Json<User>,
 ) -> Result<Json<InsertOneResult>, Status> {
     let data = User {
@@ -18,9 +18,27 @@ pub fn create_user(
         Err(_) => Err(Status::InternalServerError),
     }
 }
+#[post("/profile", data = "<new_user>")]
+pub fn create_profile(
+    db: &State<HomeUserDetails>,
+    new_user: Json<HomeUser>,
+) -> Result<Json<InsertOneResult>, Status> {
+    let data = HomeUser {
+        uid: new_user.uid,
+        name: new_user.name.to_owned(),
+        ward: new_user.ward.to_owned(),
+        locality: new_user.locality.to_owned(),
+        houseno: new_user.houseno.to_owned(),
+    };
+    let user_detail = db.create_profile(data);
+    match user_detail {
+        Ok(user) => Ok(Json(user)),
+        Err(_) => Err(Status::InternalServerError),
+    }
+}
 
 #[get("/user/<path>")]
-pub fn get_user(db: &State<MongoRepo>, path: String) -> Result<Json<User>, Status> {
+pub fn get_user(db: &State<UserEntry>, path: String) -> Result<Json<User>, Status> {
     let id = path;
     if id.is_empty() {
         return Err(Status::BadRequest);
@@ -34,7 +52,7 @@ pub fn get_user(db: &State<MongoRepo>, path: String) -> Result<Json<User>, Statu
 
 #[put("/user/<path>", data = "<new_user>")]
 pub fn update_user(
-    db: &State<MongoRepo>,
+    db: &State<UserEntry>,
     path: String,
     new_user: Json<User>,
 ) -> Result<Json<User>, Status> {
@@ -65,7 +83,7 @@ pub fn update_user(
     }
 }
 #[delete("/user/<path>")]
-pub fn delete_user(db: &State<MongoRepo>, path: String) -> Result<Json<&str>, Status> {
+pub fn delete_user(db: &State<UserEntry>, path: String) -> Result<Json<&str>, Status> {
     let id = path;
     if id.is_empty() {
         return Err(Status::BadRequest);
@@ -83,7 +101,7 @@ pub fn delete_user(db: &State<MongoRepo>, path: String) -> Result<Json<&str>, St
     }
 }
 #[get("/users")]
-pub fn get_all_users(db: &State<MongoRepo>) -> Result<Json<Vec<User>>, Status> {
+pub fn get_all_users(db: &State<UserEntry>) -> Result<Json<Vec<User>>, Status> {
     let users = db.get_all_users();
     match users {
         Ok(users) => Ok(Json(users)),
@@ -92,18 +110,15 @@ pub fn get_all_users(db: &State<MongoRepo>) -> Result<Json<Vec<User>>, Status> {
 }
 #[post("/login", data = "<new_user>")]
 pub fn login(
-    db: &State<MongoRepo>,
-    new_user: Json<User>,
-) -> Result<Json<ToF>, Status> {
-    let data = User {
-        id: None,
-        name: new_user.name.to_owned(),
-        location: new_user.location.to_owned(),
-        title: new_user.title.to_owned(),
+    db: &State<UserEntry>,
+    new_user: Json<uname>,
+) -> Result<Json<User>, Status> {
+    let data = uname {
+        name: new_user.name.to_owned()
     };
     let user_detail = db.login(data);
     match user_detail {
-        Ok(user) => Ok(Json(ToF{id:user.id})),
+        Ok(user) => Ok(Json(user)),
         Err(_) => Err(Status::InternalServerError),
     }
 }
